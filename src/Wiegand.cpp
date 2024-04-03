@@ -43,16 +43,21 @@ void WIEGAND::begin()
 	begin(2,3);
 }
 
-void WIEGAND::begin(int pinD0, int pinD1)
+void WIEGAND::begin(int pinD0, int pinD1, uint8_t inputMode)
 {
 	_lastWiegand = 0;
 	_cardTempHigh = 0;
 	_cardTemp = 0;
 	_code = 0;
 	_wiegandType = 0;
-	_bitCount = 0;  
-	pinMode(pinD0, INPUT);					// Set D0 pin as input
-	pinMode(pinD1, INPUT);					// Set D1 pin as input
+	_bitCount = 0;
+    if (inputMode == INPUT || inputMode == INPUT_PULLDOWN || inputMode == INPUT_PULLUP) {
+        pinMode(pinD0, inputMode);					// Set D0 pin as input
+        pinMode(pinD1, inputMode);					// Set D1 pin as input
+    } else {
+        pinMode(pinD0, INPUT);					// Set D0 pin as input
+        pinMode(pinD1, INPUT);					// Set D1 pin as input
+    }
 	
 	attachInterrupt(digitalPinToInterrupt(pinD0), ReadD0, FALLING);  // Hardware interrupt - high to low pulse
 	attachInterrupt(digitalPinToInterrupt(pinD1), ReadD1, FALLING);  // Hardware interrupt - high to low pulse
