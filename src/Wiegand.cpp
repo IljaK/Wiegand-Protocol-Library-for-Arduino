@@ -1,24 +1,15 @@
 #include "Wiegand.h"
 
-#if defined(ESP8266)
-    #define INTERRUPT_ATTR ICACHE_RAM_ATTR
-#elif defined(ESP32)
-	#define INTERRUPT_ATTR IRAM_ATTR
-#else
-    #define INTERRUPT_ATTR
-#endif
 
-#define WIEGAND_BIT_MAX_WAIT_TIME 50000ul // Bit timeout in micro seconds
-
-volatile unsigned long WIEGAND::_cardTempHigh=0;
-volatile unsigned long WIEGAND::_cardTemp=0;
-volatile unsigned long WIEGAND::_lastWiegand=0;
-unsigned long WIEGAND::_code=0;
-volatile int WIEGAND::_bitCount=0;
-int WIEGAND::_wiegandType=0;
-
-WIEGAND::WIEGAND()
+WIEGAND::WIEGAND(void (*ISR_D0)(void),void (*ISR_D1)(void))
 {
+    this->ISR_D0 = ISR_D0;
+    this->ISR_D1 = ISR_D1;
+}
+
+WIEGAND::~WIEGAND()
+{
+    
 }
 
 unsigned long WIEGAND::getCode()
@@ -41,11 +32,6 @@ bool WIEGAND::available()
         Serial.println("ERR");
     }
 	return ret == WIEGAND_RESULT_SUCCESS;
-}
-
-void WIEGAND::begin()
-{
-	begin(2,3);
 }
 
 void WIEGAND::begin(int pinD0, int pinD1, uint8_t inputMode, bool inverted)
@@ -74,11 +60,11 @@ void WIEGAND::begin(int pinD0, int pinD1, uint8_t inputMode, bool inverted)
     if (inverted) {
         mode = RISING;
     }
-	attachInterrupt(digitalPinToInterrupt(pinD0), ReadD0, mode);  // Hardware interrupt - high to low pulse
-	attachInterrupt(digitalPinToInterrupt(pinD1), ReadD1, mode);  // Hardware interrupt - high to low pulse
+	attachInterrupt(digitalPinToInterrupt(pinD0), this->ISR_D0, mode);  // Hardware interrupt - high to low pulse
+	attachInterrupt(digitalPinToInterrupt(pinD1), this->ISR_D1, mode);  // Hardware interrupt - high to low pulse
 }
 
-INTERRUPT_ATTR void WIEGAND::ReadD0 ()
+void WIEGAND::ReadD0 ()
 {
 	_bitCount++;				// Increament bit count for Interrupt connected to D0
 	if (_bitCount > 31)			// If bit count more than 31, process high bits
@@ -94,7 +80,7 @@ INTERRUPT_ATTR void WIEGAND::ReadD0 ()
 	_lastWiegand = micros();	// Keep track of last wiegand bit received
 }
 
-INTERRUPT_ATTR void WIEGAND::ReadD1()
+void WIEGAND::ReadD1()
 {
 	_bitCount++;				// Increment bit count for Interrupt connected to D1
 	if (_bitCount > 31)			// If bit count more than 31, process high bits
